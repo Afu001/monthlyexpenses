@@ -10,6 +10,85 @@ type Props = {
   onQuickSet: (category: ExpenseCategory, amount: number) => void
 }
 
+function MonthlyModal({
+  monthKey,
+  focus,
+  adsValue,
+  salariesValue,
+  onChangeAds,
+  onChangeSalaries,
+  error,
+  onCancel,
+  onSave,
+}: {
+  monthKey: string
+  focus: 'ADS' | 'SALARIES' | 'BOTH'
+  adsValue: string
+  salariesValue: string
+  onChangeAds: (v: string) => void
+  onChangeSalaries: (v: string) => void
+  error: string
+  onCancel: () => void
+  onSave: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40" onClick={onCancel} />
+      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+        <div className="text-sm font-semibold text-slate-900">Monthly required fields</div>
+        <div className="mt-1 text-xs text-slate-600">Set these values for {monthKey}. You can update them later.</div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3">
+          {focus !== 'SALARIES' ? (
+            <label className="text-xs font-medium text-slate-600">
+              Ads spend (USD)
+              <input
+                className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-900/10"
+                value={adsValue}
+                onChange={(e) => onChangeAds(e.target.value)}
+                placeholder="0"
+                inputMode="decimal"
+              />
+            </label>
+          ) : null}
+
+          {focus !== 'ADS' ? (
+            <label className="text-xs font-medium text-slate-600">
+              Salaries (USD)
+              <input
+                className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-900/10"
+                value={salariesValue}
+                onChange={(e) => onChangeSalaries(e.target.value)}
+                placeholder="0"
+                inputMode="decimal"
+              />
+            </label>
+          ) : null}
+        </div>
+
+        {error ? (
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">{error}</div>
+        ) : null}
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="h-11 rounded-xl bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800"
+            onClick={onSave}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const categories: ExpenseCategory[] = [
   'SUBSCRIPTIONS',
   'ADS',
@@ -25,6 +104,12 @@ export function Expenses({ monthKey, expenses, onAdd, onRemove, onQuickSet }: Pr
   const [amount, setAmount] = useState<string>('')
   const [category, setCategory] = useState<ExpenseCategory>('OTHER')
   const [notes, setNotes] = useState('')
+
+  const [monthlyModalOpen, setMonthlyModalOpen] = useState(false)
+  const [monthlyModalFocus, setMonthlyModalFocus] = useState<'ADS' | 'SALARIES' | 'BOTH'>('BOTH')
+  const [adsValue, setAdsValue] = useState<string>('')
+  const [salariesValue, setSalariesValue] = useState<string>('')
+  const [monthlyModalError, setMonthlyModalError] = useState<string>('')
 
   const promptedForMonth = useRef<string | null>(null)
 
@@ -52,13 +137,40 @@ export function Expenses({ monthKey, expenses, onAdd, onRemove, onQuickSet }: Pr
     setCategory('OTHER')
   }
 
-  function askQuick(category: ExpenseCategory, label: string) {
-    const current = expenses.find((e) => e.category === category && e.vendor === category)
-    const val = window.prompt(`Enter ${label} for ${monthKey}`, current ? String(current.amount) : '')
-    if (val == null) return
-    const parsed = Number(val)
-    if (!Number.isFinite(parsed) || parsed < 0) return
-    onQuickSet(category, parsed)
+  function openMonthlyModal(focus: 'ADS' | 'SALARIES' | 'BOTH') {
+    const currentAds = expenses.find((e) => e.category === 'ADS' && e.vendor === 'ADS')
+    const currentSalaries = expenses.find((e) => e.category === 'SALARIES' && e.vendor === 'SALARIES')
+    setAdsValue(currentAds ? String(currentAds.amount) : '')
+    setSalariesValue(currentSalaries ? String(currentSalaries.amount) : '')
+    setMonthlyModalError('')
+    setMonthlyModalFocus(focus)
+    setMonthlyModalOpen(true)
+  }
+
+  function saveMonthlyModal() {
+    setMonthlyModalError('')
+
+    const parsedAds = adsValue.trim() === '' ? null : Number(adsValue)
+    const parsedSalaries = salariesValue.trim() === '' ? null : Number(salariesValue)
+
+    if (monthlyModalFocus !== 'SALARIES') {
+      if (parsedAds == null || !Number.isFinite(parsedAds) || parsedAds < 0) {
+        setMonthlyModalError('Please enter a valid Ads value (0 or more).')
+        return
+      }
+    }
+
+    if (monthlyModalFocus !== 'ADS') {
+      if (parsedSalaries == null || !Number.isFinite(parsedSalaries) || parsedSalaries < 0) {
+        setMonthlyModalError('Please enter a valid Salaries value (0 or more).')
+        return
+      }
+    }
+
+    if (monthlyModalFocus !== 'SALARIES' && parsedAds != null) onQuickSet('ADS', parsedAds)
+    if (monthlyModalFocus !== 'ADS' && parsedSalaries != null) onQuickSet('SALARIES', parsedSalaries)
+
+    setMonthlyModalOpen(false)
   }
 
   const adsMissing = !expenses.some((e) => e.category === 'ADS')
@@ -68,13 +180,28 @@ export function Expenses({ monthKey, expenses, onAdd, onRemove, onQuickSet }: Pr
     if (promptedForMonth.current === monthKey) return
     promptedForMonth.current = monthKey
 
-    if (adsMissing) askQuick('ADS', 'ads spend')
-    if (salariesMissing) askQuick('SALARIES', 'salaries')
+    if (adsMissing || salariesMissing) {
+      openMonthlyModal('BOTH')
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthKey])
 
   return (
     <div className="space-y-6">
+      {monthlyModalOpen ? (
+        <MonthlyModal
+          monthKey={monthKey}
+          focus={monthlyModalFocus}
+          adsValue={adsValue}
+          salariesValue={salariesValue}
+          onChangeAds={setAdsValue}
+          onChangeSalaries={setSalariesValue}
+          error={monthlyModalError}
+          onCancel={() => setMonthlyModalOpen(false)}
+          onSave={saveMonthlyModal}
+        />
+      ) : null}
+
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -141,13 +268,13 @@ export function Expenses({ monthKey, expenses, onAdd, onRemove, onQuickSet }: Pr
         <div className="mt-4 flex flex-col gap-2 md:flex-row">
           <button
             className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50"
-            onClick={() => askQuick('ADS', 'ads spend')}
+            onClick={() => openMonthlyModal('ADS')}
           >
             {adsMissing ? 'Add ads spend (required)' : 'Update ads spend'}
           </button>
           <button
             className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50"
-            onClick={() => askQuick('SALARIES', 'salaries')}
+            onClick={() => openMonthlyModal('SALARIES')}
           >
             {salariesMissing ? 'Add salaries (required)' : 'Update salaries'}
           </button>
