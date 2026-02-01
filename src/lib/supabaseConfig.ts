@@ -5,16 +5,14 @@ export type SupabaseConfig = {
 
 const KEY = 'monthfinance.supabaseConfig'
 
+const FORCED: SupabaseConfig = {
+  url: 'https://xlpwsbavtwpbsoxsmzzt.supabase.co',
+  anonKey:
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscHdzYmF2dHdwYnNveHNtenp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5NDk4MTksImV4cCI6MjA4NTUyNTgxOX0.95qfdA7B1uUwJIiVlq4oWW2vaOsGpK7mat1Mo523mN0',
+}
+
 export function getSupabaseConfig(): SupabaseConfig | null {
-  const raw = localStorage.getItem(KEY)
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw) as Partial<SupabaseConfig>
-    if (!parsed.url || !parsed.anonKey) return null
-    return { url: parsed.url, anonKey: parsed.anonKey }
-  } catch {
-    return null
-  }
+  return FORCED
 }
 
 export function setSupabaseConfig(cfg: SupabaseConfig) {
