@@ -5,6 +5,8 @@ import { Dashboard } from './pages/Dashboard'
 import { Expenses } from './pages/Expenses'
 import { Receipts } from './pages/Receipts'
 import { Settings } from './pages/Settings'
+import { Login } from './pages/Login'
+import { isLoggedIn } from './lib/auth'
 
 function App() {
   const {
@@ -18,7 +20,12 @@ function App() {
 
   return (
     <Routes>
-      <Route element={<Shell monthKey={selectedMonthKey} onMonthChange={setSelectedMonthKey} />}>
+      <Route path="/login" element={<Login />} />
+      <Route
+        element={
+          isLoggedIn() ? <Shell monthKey={selectedMonthKey} onMonthChange={setSelectedMonthKey} /> : <Navigate to="/login" replace />
+        }
+      >
         <Route index element={<Dashboard monthKey={selectedMonthKey} expenses={monthExpenses} />} />
         <Route
           path="/expenses"

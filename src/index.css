@@ -8,4 +8,19 @@ body,
 
 body {
   margin: 0;
+  background: #f8fafc;
+}
+
+@media print {
+  aside {
+    display: none !important;
+  }
+
+  button {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
 }

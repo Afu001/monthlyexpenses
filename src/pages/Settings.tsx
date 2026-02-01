@@ -2,15 +2,22 @@ import { useMemo, useState } from 'react'
 import { clearSupabaseConfig, getSupabaseConfig, setSupabaseConfig } from '../lib/supabaseConfig'
 import { getSupabaseClient } from '../lib/supabaseClient'
 import { getBackendConfig, normalizeBaseUrl, setBackendConfig } from '../lib/backendConfig'
+import { clearGmailConfig, getGmailConfig, setGmailConfig } from '../lib/gmailConfig'
 
 type TestResult = { ok: boolean; message: string } | null
 
 export function Settings() {
   const existing = useMemo(() => getSupabaseConfig(), [])
   const existingBackend = useMemo(() => getBackendConfig(), [])
+  const existingGmail = useMemo(() => getGmailConfig(), [])
   const [url, setUrl] = useState(existing?.url ?? '')
   const [anonKey, setAnonKey] = useState(existing?.anonKey ?? '')
   const [backendBaseUrl, setBackendBaseUrl] = useState(existingBackend.baseUrl ?? '')
+  const [gmailClientId, setGmailClientId] = useState(existingGmail?.clientId ?? '')
+  const [gmailClientSecret, setGmailClientSecret] = useState(existingGmail?.clientSecret ?? '')
+  const [gmailRedirectUri, setGmailRedirectUri] = useState(
+    existingGmail?.redirectUri ?? 'http://localhost:5174/api/gmail/oauth2callback',
+  )
   const [test, setTest] = useState<TestResult>(null)
 
   async function testConnection() {
@@ -36,6 +43,11 @@ export function Settings() {
   function save() {
     setSupabaseConfig({ url: url.trim(), anonKey: anonKey.trim() })
     setBackendConfig({ baseUrl: normalizeBaseUrl(backendBaseUrl) })
+    setGmailConfig({
+      clientId: gmailClientId.trim(),
+      clientSecret: gmailClientSecret.trim(),
+      redirectUri: gmailRedirectUri.trim(),
+    })
     setTest({ ok: true, message: 'Saved.' })
   }
 
@@ -45,6 +57,10 @@ export function Settings() {
     setAnonKey('')
     setBackendConfig({ baseUrl: '' })
     setBackendBaseUrl('')
+    clearGmailConfig()
+    setGmailClientId('')
+    setGmailClientSecret('')
+    setGmailRedirectUri('http://localhost:5174/api/gmail/oauth2callback')
     setTest({ ok: true, message: 'Cleared local Supabase config.' })
   }
 
@@ -121,6 +137,47 @@ export function Settings() {
               {test.message}
             </div>
           ) : null}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="text-sm font-semibold text-slate-900">Gmail OAuth (local backend)</div>
+        <div className="mt-1 text-xs text-slate-600">
+          Optional. If your local receipt server does not have Gmail OAuth keys in <code>server/.env</code>, you can store
+          them here and the frontend will send them to the backend when requesting OAuth.
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3">
+          <label className="text-xs font-medium text-slate-600">
+            Gmail Client ID
+            <input
+              className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-900/10"
+              value={gmailClientId}
+              onChange={(e) => setGmailClientId(e.target.value)}
+              placeholder="your_google_oauth_client_id"
+            />
+          </label>
+
+          <label className="text-xs font-medium text-slate-600">
+            Gmail Client Secret
+            <input
+              className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-900/10"
+              value={gmailClientSecret}
+              onChange={(e) => setGmailClientSecret(e.target.value)}
+              placeholder="your_google_oauth_client_secret"
+              type="password"
+            />
+          </label>
+
+          <label className="text-xs font-medium text-slate-600">
+            Gmail Redirect URI
+            <input
+              className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-slate-900/10"
+              value={gmailRedirectUri}
+              onChange={(e) => setGmailRedirectUri(e.target.value)}
+              placeholder="http://localhost:5174/api/gmail/oauth2callback"
+            />
+          </label>
         </div>
       </section>
     </div>

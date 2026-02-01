@@ -28,16 +28,29 @@ const store = {
   gmail: {
     oauthClient: null,
     tokens: null,
+    oauthConfig: null,
   },
   zoho: {
     config: null,
   },
 }
 
-function getGmailOAuthClient() {
-  const clientId = process.env.GMAIL_CLIENT_ID
-  const clientSecret = process.env.GMAIL_CLIENT_SECRET
-  const redirectUri = process.env.GMAIL_REDIRECT_URI
+function getHeader(req, name) {
+  if (!req || !req.headers) return null
+  const value = req.headers[name]
+  if (!value) return null
+  if (Array.isArray(value)) return value[0]
+  return String(value)
+}
+
+function getGmailOAuthClient(req) {
+  const headerClientId = getHeader(req, 'x-gmail-client-id')
+  const headerClientSecret = getHeader(req, 'x-gmail-client-secret')
+  const headerRedirectUri = getHeader(req, 'x-gmail-redirect-uri')
+
+  const clientId = headerClientId || process.env.GMAIL_CLIENT_ID
+  const clientSecret = headerClientSecret || process.env.GMAIL_CLIENT_SECRET
+  const redirectUri = headerRedirectUri || process.env.GMAIL_REDIRECT_URI
   if (!clientId || !clientSecret || !redirectUri) return null
 
   const oauthClient = new google.auth.OAuth2(clientId, clientSecret, redirectUri)
@@ -48,8 +61,8 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
 })
 
-app.get('/api/gmail/auth-url', (_req, res) => {
-  const oauthClient = getGmailOAuthClient()
+app.get('/api/gmail/auth-url', (req, res) => {
+  const oauthClient = getGmailOAuthClient(req)
   if (!oauthClient) {
     res.status(400).json({
       ok: false,
@@ -59,6 +72,11 @@ app.get('/api/gmail/auth-url', (_req, res) => {
   }
 
   store.gmail.oauthClient = oauthClient
+  store.gmail.oauthConfig = {
+    clientId: getHeader(req, 'x-gmail-client-id') || null,
+    clientSecret: getHeader(req, 'x-gmail-client-secret') || null,
+    redirectUri: getHeader(req, 'x-gmail-redirect-uri') || null,
+  }
 
   const url = oauthClient.generateAuthUrl({
     access_type: 'offline',
@@ -71,7 +89,7 @@ app.get('/api/gmail/auth-url', (_req, res) => {
 
 app.get('/api/gmail/oauth2callback', async (req, res) => {
   const code = req.query.code
-  const oauthClient = store.gmail.oauthClient ?? getGmailOAuthClient()
+  const oauthClient = store.gmail.oauthClient ?? getGmailOAuthClient(req)
 
   if (!oauthClient) {
     res.status(400).send('Gmail OAuth is not configured (missing env vars).')

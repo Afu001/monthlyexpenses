@@ -2,6 +2,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   Pie,
   PieChart,
@@ -13,7 +14,7 @@ import {
 import type { Expense } from '../lib/types'
 import { formatMoney, sumExpenses } from '../lib/utils'
 import { StatCard } from '../components/StatCard'
-import { Banknote, Briefcase, Megaphone, Repeat } from 'lucide-react'
+import { Banknote, Briefcase, Download, Megaphone, Repeat } from 'lucide-react'
 
 type Props = {
   monthKey: string
@@ -22,6 +23,8 @@ type Props = {
 
 export function Dashboard({ monthKey, expenses }: Props) {
   const total = sumExpenses(expenses)
+
+  const palette = ['#0f172a', '#2563eb', '#16a34a', '#f97316', '#a855f7', '#0ea5e9', '#db2777', '#eab308']
 
   const byCategory = Object.entries(
     expenses.reduce<Record<string, number>>((acc, e) => {
@@ -48,7 +51,21 @@ export function Dashboard({ monthKey, expenses }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{monthKey}</div>
+          <div className="mt-1 text-sm text-slate-600">Summary and breakdown</div>
+        </div>
+        <button
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50"
+          onClick={() => window.print()}
+        >
+          <Download className="h-4 w-4" />
+          Export PDF
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Total spend"
           value={formatMoney(total, 'USD')}
@@ -70,26 +87,30 @@ export function Dashboard({ monthKey, expenses }: Props) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Spend by category">
-          <div className="h-72">
+          <div className="h-64 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={byCategory} dataKey="value" nameKey="name" outerRadius={110} innerRadius={55} />
-                <Tooltip />
-                <Legend />
+                <Pie data={byCategory} dataKey="value" nameKey="name" outerRadius={110} innerRadius={55} paddingAngle={2}>
+                  {byCategory.map((entry, idx) => (
+                    <Cell key={entry.name} fill={palette[idx % palette.length]} stroke="rgba(15, 23, 42, 0.08)" />
+                  ))}
+                </Pie>
+                <Tooltip content={<MoneyTooltip />} />
+                <Legend verticalAlign="bottom" height={36} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </Panel>
 
         <Panel title="Top vendors">
-          <div className="h-72">
+          <div className="h-64 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={byVendor} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(15, 23, 42, 0.08)" />
                 <XAxis dataKey="name" hide />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#0f172a" radius={[8, 8, 0, 0]} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${Number(v).toFixed(0)}`} />
+                <Tooltip content={<MoneyTooltip />} />
+                <Bar dataKey="value" fill="#2563eb" radius={[10, 10, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -113,5 +134,18 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
       <div className="mb-3 text-sm font-semibold text-slate-900">{title}</div>
       {children}
     </section>
+  )
+}
+
+function MoneyTooltip({ active, payload, label }: any) {
+  if (!active || !payload || !payload.length) return null
+  const p = payload[0]
+  const name = (p?.name ?? label ?? '').toString()
+  const value = Number(p?.value ?? 0)
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
+      <div className="font-medium text-slate-900">{name}</div>
+      <div className="mt-1 text-slate-600">{formatMoney(value, 'USD')}</div>
+    </div>
   )
 }

@@ -3,6 +3,7 @@ import type { Expense } from '../lib/types'
 import { todayIso } from '../lib/utils'
 import { getBackendConfig } from '../lib/backendConfig'
 import { getSupabaseClient } from '../lib/supabaseClient'
+import { getGmailConfig } from '../lib/gmailConfig'
 import {
   fetchReceiptCandidates,
   markReceiptImported,
@@ -44,7 +45,12 @@ export function Receipts({ monthKey, onImport }: Props) {
   async function apiFetch(path: string, init?: RequestInit) {
     const cfg = getBackendConfig()
     const baseUrl = cfg.baseUrl ? cfg.baseUrl : ''
-    return fetch(`${baseUrl}${path}`, init)
+    const gmail = getGmailConfig()
+    const headers = new Headers(init?.headers)
+    if (gmail?.clientId) headers.set('x-gmail-client-id', gmail.clientId)
+    if (gmail?.clientSecret) headers.set('x-gmail-client-secret', gmail.clientSecret)
+    if (gmail?.redirectUri) headers.set('x-gmail-redirect-uri', gmail.redirectUri)
+    return fetch(`${baseUrl}${path}`, { ...init, headers })
   }
 
   async function loadFromSupabase() {
@@ -54,9 +60,16 @@ export function Receipts({ monthKey, onImport }: Props) {
       return
     }
 
+    setStatus('Loading from Supabase...')
     setErrors([])
-    const list = await fetchReceiptCandidates(client, monthKey)
-    setCandidates(list)
+    try {
+      const list = await fetchReceiptCandidates(client, monthKey)
+      setCandidates(list)
+      setStatus(list.length ? `Loaded ${list.length} receipt candidates from Supabase.` : 'No receipt candidates found in Supabase for this month.')
+    } catch (e) {
+      setStatus('')
+      setErrors([`Supabase error: ${String((e as any)?.message ?? e)}`])
+    }
   }
 
   useEffect(() => {
@@ -260,7 +273,7 @@ export function Receipts({ monthKey, onImport }: Props) {
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
               className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50"
-              onClick={() => loadFromSupabase()}
+              onClick={() => void loadFromSupabase()}
             >
               Load from Supabase
             </button>
