@@ -6,9 +6,10 @@ import { Expenses } from './pages/Expenses'
 import { Receipts } from './pages/Receipts'
 import { Settings } from './pages/Settings'
 import { Login } from './pages/Login'
-import { isLoggedIn } from './lib/auth'
+import { useAuth } from './lib/auth'
 
 function App() {
+  const { loggedIn } = useAuth()
   const {
     selectedMonthKey,
     setSelectedMonthKey,
@@ -23,7 +24,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route
         element={
-          isLoggedIn() ? <Shell monthKey={selectedMonthKey} onMonthChange={setSelectedMonthKey} /> : <Navigate to="/login" replace />
+          loggedIn ? <Shell monthKey={selectedMonthKey} onMonthChange={setSelectedMonthKey} /> : <Navigate to="/login" replace />
         }
       >
         <Route index element={<Dashboard monthKey={selectedMonthKey} expenses={monthExpenses} />} />
